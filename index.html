@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Piosenki</title>
+<style>
+:root{--bg:#faf7f2;--card:#fff;--text:#1d1b19;--muted:#6f6a63;--line:#e6dfd5;--accent:#c8102e;--accent-t:#fff;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17150f;--card:#221f19;--text:#f1ece4;--muted:#a39b8e;--line:#38332a;--accent:#ff4d6a;--accent-t:#1a0a0d;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#17150f;--card:#221f19;--text:#f1ece4;--muted:#a39b8e;--line:#38332a;--accent:#ff4d6a;--accent-t:#1a0a0d;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:780px;margin:0 auto;padding:20px 16px 80px}
+h1{font-size:1.8rem;margin:.2em 0 .1em}
+.acct{font-size:.85rem;color:var(--muted);margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+label{display:block;font-size:.85rem;color:var(--muted);margin:10px 0 4px}
+input,textarea,select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font:inherit}
+textarea{min-height:70px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:520px){.row{grid-template-columns:1fr}}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text);padding:8px 14px}
+button.primary{background:var(--accent);color:var(--accent-t);border-color:var(--accent);font-weight:600;margin-top:14px}
+button.small{padding:4px 10px;font-size:.85rem}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.bar input[type=search]{flex:1;min-width:160px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.chip{border-radius:999px;padding:5px 14px;font-size:.9rem}
+.chip.on{background:var(--accent);color:var(--accent-t);border-color:var(--accent)}
+.chip.add{border-style:dashed;color:var(--muted)}
+.song{display:flex;gap:12px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--line)}
+.song:last-child{border-bottom:0}
+.song.active{background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:10px}
+.play{flex:none;width:42px;height:42px;border-radius:50%;background:var(--accent);color:var(--accent-t);border:0;font-size:1rem;padding:0}
+.meta{flex:1;min-width:0}
+.t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.a{color:var(--muted);font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.actions select{width:auto;padding:4px 8px;font-size:.85rem}
+#player{position:sticky;top:0;z-index:5}
+#player iframe{width:100%;aspect-ratio:16/9;border:0;border-radius:10px;background:#000}
+#player audio{width:100%}
+.lyrics{white-space:pre-wrap;margin-top:10px;font-size:.95rem;color:var(--muted);max-height:30vh;overflow:auto}
+.status{color:var(--accent);font-size:.9rem;min-height:1.3em;margin-top:6px}
+.empty{color:var(--muted);text-align:center;padding:24px 0}
+.hint{font-size:.8rem;color:var(--muted);margin-top:6px}
+.err{color:var(--accent);font-size:.9rem;margin-top:8px;min-height:1.2em}
+.gap{display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--muted)}
+.gap input{width:64px;padding:4px 8px}
+#nameRow{margin-bottom:12px}
+#nameRow input{flex:1;min-width:140px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Piosenki</h1>
+  <p class="acct" id="acct">Konto: łączenie…</p>
+
+  <div class="card" id="player" hidden>
+    <div id="media"></div>
+    <div class="meta" style="margin-top:10px"><div class="t" id="nowTitle"></div><div class="a" id="nowArtist"></div></div>
+    <div class="lyrics" id="nowLyrics"></div>
+    <div class="status" id="pStatus"></div>
+    <div class="bar" style="margin:8px 0 0">
+      <button class="small" id="prev">⏮ Poprzednia</button>
+      <button class="small" id="next">Następna ⏭</button>
+      <button class="small" id="stop">⏹ Zatrzymaj</button>
+      
+    </div>
+  </div>
+
+  <div class="card">
+    <strong id="formTitle">Dodaj piosenkę</strong>
+    <div class="row">
+      <div><label for="fTitle">Tytuł *</label><input id="fTitle" placeholder="np. Sen o Warszawie"></div>
+      <div><label for="fArtist">Wykonawca (opcjonalnie)</label><input id="fArtist" placeholder="np. Czesław Niemen"></div>
+    </div>
+    <label for="fUrl">Link (YouTube lub bezpośredni link do mp3/ogg/wav)</label>
+    <input id="fUrl" placeholder="https://www.youtube.com/watch?v=...">
+    <div id="upBox" hidden>
+      <label for="fFile">…albo prześlij plik audio (mp3, ogg, wav, m4a — do 20 MB). Ten sposób działa najpewniej.</label>
+      <input id="fFile" type="file" accept="audio/*">
+    </div>
+    <div class="row">
+      <div><label for="fStart">Start od (opcjonalnie, np. 0:45)</label><input id="fStart" placeholder="0:00"></div>
+      <div><label for="fEnd">Koniec o (opcjonalnie, np. 3:10)</label><input id="fEnd" placeholder="do końca"></div>
+    </div>
+    <label for="fLyrics">Tekst (opcjonalnie)</label>
+    <textarea id="fLyrics" placeholder="Słowa piosenki"></textarea>
+    <div class="err" id="err"></div>
+    <div class="bar" style="margin:0">
+      <button class="primary" id="add">Dodaj</button>
+      <button id="cancel" hidden style="margin-top:14px">Anuluj</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="chips" id="tabs"></div>
+    <div class="bar" id="nameRow" hidden>
+      <input id="nameInp" maxlength="60" placeholder="Nazwa listy">
+      <button class="small" id="nameOk">OK</button>
+      <button class="small" id="nameNo">Anuluj</button>
+    </div>
+    <div class="bar" id="listTools" hidden>
+      <button class="small" id="renameList">✎ Zmień nazwę listy</button>
+      <button class="small" id="deleteList">✕ Usuń listę</button>
+    </div>
+    <div class="bar">
+      <input id="q" type="search" placeholder="Szukaj po tytule lub wykonawcy…">
+      <button class="small" id="playAll">▶ Odtwórz wszystko</button>
+    </div>
+    <div class="bar">
+      <label class="gap" style="margin:0">Przerwa między piosenkami <input id="gap" type="number" min="0" max="120" step="1"> s</label>
+      <span style="flex:1"></span>
+      <button class="small" id="export">⬇ Eksport</button>
+      <button class="small" id="import">⬆ Import</button>
+      <input id="file" type="file" accept="application/json" hidden>
+    </div>
+    <div class="err" id="msg"></div>
+    <div id="list"></div>
+    <div class="hint">Piosenki zapisują się w tej przeglądarce. Po zalogowaniu w claude.ai lista synchronizuje się z kontem. Przy YouTube automatyczne przejście do następnej piosenki działa tylko wtedy, gdy podasz czas końca.</div>
+  </div>
+</main>
+
+<script>
+(function(){
+  var KEY="piosenki-v2",OLD="polskie-piosenki-v1";
+  var S={songs:[],lists:[],gap:3,updated:0};
+  var view="all",current=null,queue=[],qi=-1,editing=null,token=0,timers={};
+  var dbRef=null,saveTimer=null,saving=false;
+  var $=function(i){return document.getElementById(i)};
+  function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+
+  /* ---------- czas ---------- */
+  function parseT(v){
+    v=(v||"").trim();if(!v)return null;
+    if(/^\d+$/.test(v))return +v;
+    var m=v.match(/^(\d+):([0-5]?\d)$/);
+    return m?(+m[1])*60+(+m[2]):NaN;
+  }
+  function fmtT(s){var m=Math.floor(s/60),x=s%60;return m+":"+(x<10?"0":"")+x}
+
+  /* ---------- dane ---------- */
+  function norm(x){
+    var o={songs:[],lists:[],gap:3,updated:0};
+    if(Array.isArray(x))x={songs:x};
+    if(!x||typeof x!=="object")return o;
+    if(Array.isArray(x.songs))o.songs=x.songs.filter(function(s){return s&&s.title&&s.url}).map(function(s){
+      var st=Number(s.start),en=Number(s.end);
+      return {id:String(s.id||uid()),title:String(s.title),artist:String(s.artist||""),url:String(s.url),assetId:s.assetId?String(s.assetId):null,lyrics:String(s.lyrics||""),start:st>0?st:null,end:en>0?en:null};
+    });
+    var have={};o.songs.forEach(function(s){have[s.id]=1});
+    if(Array.isArray(x.lists))o.lists=x.lists.filter(function(l){return l&&l.name}).map(function(l){
+      return {id:String(l.id||uid()),name:String(l.name),songIds:(Array.isArray(l.songIds)?l.songIds:[]).map(String).filter(function(i){return have[i]})};
+    });
+    var g=parseInt(x.gap,10);o.gap=isNaN(g)?3:Math.max(0,Math.min(120,g));
+    o.updated=Number(x.updated)||0;
+    return o;
+  }
+  function loadLocal(){
+    try{
+      var r=localStorage.getItem(KEY);
+      if(r){S=norm(JSON.parse(r));return}
+      var o=localStorage.getItem(OLD);
+      if(o){S=norm(JSON.parse(o))}
+    }catch(e){S=norm(null)}
+  }
+  function persist(){
+    S.updated=Date.now();
+    try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){msg("Nie udało się zapisać w przeglądarce.")}
+    schedulePush();
+  }
+  function getSong(id){return S.songs.find(function(s){return s.id===id})}
+  function getList(id){return S.lists.find(function(l){return l.id===id})}
+  function viewIds(){
+    if(view==="all")return S.songs.map(function(s){return s.id});
+    var l=getList(view);return l?l.songIds.filter(function(i){return getSong(i)}):[];
+  }
+  function msg(t){$("msg").textContent=t||""}
+  function showErr(t){$("err").textContent=t||""}
+
+  /* ---------- konto (opcjonalne) ---------- */
+  function setAcct(kind,name){
+    var el=$("acct");
+    if(kind==="synced")el.textContent="☁ Zalogowano"+(name?" jako "+name:"")+" — lista synchronizuje się z kontem.";
+    else el.textContent="💾 Tryb lokalny (bez logowania). Zaloguj się w claude.ai, aby synchronizować listę między urządzeniami.";
+  }
+  function schedulePush(){
+    if(!dbRef)return;
+    clearTimeout(saveTimer);saveTimer=setTimeout(push,700);
+  }
+  function push(){
+    if(!dbRef)return;
+    if(saving){saveTimer=setTimeout(push,500);return}
+    saving=true;
+    dbRef.set({json:JSON.stringify(S),updated:S.updated}).then(function(){saving=false},function(){saving=false;dbRef=null;setAcct("local")});
+  }
+  function initAccount(){
+    var c=window.claude;
+    if(!c||!c.use){setAcct("local");return}
+    Promise.all([c.use("user"),c.use("db")]).then(function(r){
+      var user=r[0],db=r[1];
+      if(!user||!db){setAcct("local");return}
+      return user.me().then(function(me){
+        if(!me||!me.id){setAcct("local");return}
+        var ref=db.collection("data/users/"+me.id).doc("library");
+        return ref.get().then(function(snap){
+          if(snap.exists){
+            var d=snap.data()||{};
+            if((d.updated||0)>S.updated){
+              try{S=norm(JSON.parse(d.json));S.updated=d.updated;localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+              renderAll();
+            }
+          }
+          dbRef=ref;setAcct("synced",me.name);
+          if(!snap.exists||S.updated>(snap.data().updated||0))push();
+        });
+      });
+    }).catch(function(){setAcct("local")});
+  }
+
+  /* ---------- odtwarzanie ---------- */
+  function ytId(u){
+    var m=u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/))([\w-]{11})/);
+    return m?m[1]:null;
+  }
+  function clearTimers(){
+    clearTimeout(timers.end);clearInterval(timers.gap);clearTimeout(timers.gap);
+    timers={};$("pStatus").textContent="";
+  }
+  function play(id,q){
+    clearTimers();token++;var my=token;
+    var s=getSong(id);if(!s)return;
+    queue=q&&q.length?q:[id];qi=queue.indexOf(id);if(qi<0){queue=[id];qi=0}
+    current=id;
+    var media=$("media");media.innerHTML="";
+    var y=ytId(s.url);
+    if(y){
+      var p="autoplay=1&rel=0";
+      if(s.start)p+="&start="+s.start;
+      if(s.end)p+="&end="+s.end;
+      var f=document.createElement("iframe");
+      if(/^https?:/.test(location.origin))p+="&origin="+encodeURIComponent(location.origin);
+      p+="&playsinline=1";
+      f.referrerPolicy="strict-origin-when-cross-origin";
+      f.src="https://www.youtube.com/embed/"+y+"?"+p;
+      f.allow="autoplay; encrypted-media; picture-in-picture";f.allowFullscreen=true;f.title=s.title;
+      var yl=document.createElement("a");yl.href="https://www.youtube.com/watch?v="+y+(s.start?"&t="+s.start+"s":"");yl.target="_blank";yl.rel="noopener";yl.textContent="▶ Odtwórz w YouTube (nowa karta) ↗";yl.style.cssText="display:inline-block;padding:12px 18px;border-radius:10px;background:var(--accent);color:var(--accent-t);text-decoration:none;font-weight:600";media.appendChild(yl);$("pStatus").textContent="Na stronie claude.ai YouTube nie może grać w osadzonym odtwarzaczu (błąd 153). Użyj przycisku albo dodaj plik mp3.";
+      
+      
+    }else{
+      var au=document.createElement("audio");au.controls=true;au.src=s.url;
+      au.onloadedmetadata=function(){if(s.start)au.currentTime=s.start};
+      au.ontimeupdate=function(){if(s.end&&au.currentTime>=s.end){au.pause();finish(my)}};
+      au.onended=function(){finish(my)};
+      au.onerror=function(){$("pStatus").textContent="Nie można odtworzyć tego linku. Prześlij plik audio zamiast linku."};
+      media.appendChild(au);
+      var pr=au.play();if(pr&&pr.catch)pr.catch(function(){});
+    }
+    $("nowTitle").textContent=s.title;$("nowArtist").textContent=s.artist||"";
+    $("nowLyrics").textContent=s.lyrics||"";
+    
+    $("player").hidden=false;
+    renderList();
+  }
+  function finish(my){
+    if(my!==token)return;
+    if(qi<0||qi>=queue.length-1){$("pStatus").textContent="Koniec listy.";return}
+    var left=S.gap;
+    if(left<=0){step(1,true);return}
+    var show=function(){$("pStatus").textContent="Następna piosenka za "+left+" s…"};
+    show();
+    timers.gap=setInterval(function(){
+      left--;
+      if(left<=0){clearInterval(timers.gap);step(1,true)}else show();
+    },1000);
+  }
+  function step(d,noWrap){
+    if(!queue.length)return;
+    var n=qi+d;
+    if(noWrap&&(n<0||n>=queue.length))return;
+    n=(n+queue.length)%queue.length;
+    var q=queue;
+    if(!getSong(q[n])){queue=q.filter(getSong);qi=Math.min(qi,queue.length-1);return}
+    play(q[n],q);
+  }
+  function stop(){
+    clearTimers();token++;current=null;qi=-1;
+    $("media").innerHTML="";$("player").hidden=true;renderList();
+  }
+
+  /* ---------- UI ---------- */
+  function askName(label,initial,cb){
+    $("nameRow").hidden=false;$("nameInp").placeholder=label;$("nameInp").value=initial;$("nameInp").focus();
+    var done=function(ok){
+      var v=$("nameInp").value.trim();$("nameRow").hidden=true;
+      $("nameOk").onclick=$("nameNo").onclick=$("nameInp").onkeydown=null;
+      if(ok&&v)cb(v);
+    };
+    $("nameOk").onclick=function(){done(true)};
+    $("nameNo").onclick=function(){done(false)};
+    $("nameInp").onkeydown=function(e){if(e.key==="Enter")done(true);else if(e.key==="Escape")done(false)};
+  }
+  function twoStep(btn,fn){
+    if(btn.dataset.arm){fn();return}
+    var old=btn.textContent;btn.dataset.arm="1";btn.textContent="Na pewno?";
+    setTimeout(function(){delete btn.dataset.arm;btn.textContent=old},3000);
+  }
+  function renderTabs(){
+    var t=$("tabs");t.innerHTML="";
+    var chip=function(label,id){
+      var b=document.createElement("button");b.className="chip"+(view===id?" on":"");b.textContent=label;
+      b.onclick=function(){view=id;renderAll()};t.appendChild(b);
+    };
+    chip("Wszystkie ("+S.songs.length+")","all");
+    S.lists.forEach(function(l){chip(l.name+" ("+l.songIds.length+")",l.id)});
+    var n=document.createElement("button");n.className="chip add";n.textContent="＋ Nowa lista";
+    n.onclick=function(){askName("Nazwa nowej listy","",function(name){
+      var l={id:uid(),name:name,songIds:[]};S.lists.push(l);view=l.id;persist();renderAll();
+    })};
+    t.appendChild(n);
+    $("listTools").hidden=view==="all";
+  }
+  function btn(txt,title,fn,cls){
+    var b=document.createElement("button");b.className=cls||"small";b.textContent=txt;if(title)b.title=title;b.onclick=function(){fn(b)};return b;
+  }
+  function renderList(){
+    var box=$("list");box.innerHTML="";
+    var q=$("q").value.trim().toLowerCase();
+    var ids=viewIds();
+    var shown=ids.map(getSong).filter(function(s){return !q||(s.title+" "+(s.artist||"")).toLowerCase().indexOf(q)>-1});
+    if(!shown.length){
+      var e=document.createElement("div");e.className="empty";
+      e.textContent=!S.songs.length?"Na razie pusto — dodaj pierwszą piosenkę powyżej 👆":(view==="all"||q?"Nic nie znaleziono.":"Ta lista jest pusta — dodaj piosenki z zakładki „Wszystkie”.");
+      box.appendChild(e);return;
+    }
+    var list=view==="all"?null:getList(view);
+    shown.forEach(function(s){
+      var row=document.createElement("div");row.className="song"+(s.id===current?" active":"");
+      var pb=document.createElement("button");pb.className="play";pb.textContent="▶";pb.setAttribute("aria-label","Odtwórz");
+      pb.onclick=function(){play(s.id,viewIds())};
+      var m=document.createElement("div");m.className="meta";
+      var t=document.createElement("div");t.className="t";t.textContent=s.title;
+      var a=document.createElement("div");a.className="a";
+      var sub=[];if(s.artist)sub.push(s.artist);
+      if(s.start||s.end)sub.push("⏱ "+fmtT(s.start||0)+"–"+(s.end?fmtT(s.end):"koniec"));
+      a.textContent=sub.join(" · ");
+      m.appendChild(t);m.appendChild(a);
+      var ac=document.createElement("div");ac.className="actions";
+      if(list){
+        var idx=list.songIds.indexOf(s.id);
+        ac.appendChild(btn("▲","Wyżej",function(){move(list,idx,-1)}));
+        ac.appendChild(btn("▼","Niżej",function(){move(list,idx,1)}));
+      }else if(S.lists.length){
+        var sel=document.createElement("select");sel.setAttribute("aria-label","Dodaj do listy");
+        var o0=document.createElement("option");o0.value="";o0.textContent="＋ do listy";sel.appendChild(o0);
+        S.lists.forEach(function(l){var o=document.createElement("option");o.value=l.id;o.textContent=l.name;sel.appendChild(o)});
+        sel.onchange=function(){
+          var l=getList(sel.value);
+          if(l&&l.songIds.indexOf(s.id)<0){l.songIds.push(s.id);persist();renderTabs()}
+          sel.value="";
+        };
+        ac.appendChild(sel);
+      }
+      ac.appendChild(btn("✎","Edytuj",function(){edit(s.id)}));
+      if(list)ac.appendChild(btn("✕","Usuń z listy",function(b){twoStep(b,function(){
+        list.songIds=list.songIds.filter(function(i){return i!==s.id});persist();renderAll();
+      })}));
+      else ac.appendChild(btn("✕","Usuń piosenkę",function(b){twoStep(b,function(){removeSong(s.id)})}));
+      row.appendChild(pb);row.appendChild(m);row.appendChild(ac);box.appendChild(row);
+    });
+  }
+  function renderAll(){renderTabs();renderList();$("gap").value=S.gap}
+  function move(list,i,d){
+    var j=i+d;if(i<0||j<0||j>=list.songIds.length)return;
+    var x=list.songIds[i];list.songIds[i]=list.songIds[j];list.songIds[j]=x;
+    persist();renderList();
+  }
+  function removeSong(id){
+    S.songs=S.songs.filter(function(s){return s.id!==id});
+    S.lists.forEach(function(l){l.songIds=l.songIds.filter(function(i){return i!==id})});
+    if(current===id)stop();
+    persist();renderAll();
+  }
+
+  /* ---------- formularz ---------- */
+  function edit(id){
+    var s=getSong(id);if(!s)return;
+    editing=id;
+    $("fTitle").value=s.title;$("fArtist").value=s.artist||"";$("fUrl").value=s.assetId?"":s.url;
+    $("fStart").value=s.start?fmtT(s.start):"";$("fEnd").value=s.end?fmtT(s.end):"";$("fLyrics").value=s.lyrics||"";
+    $("add").textContent="Zapisz zmiany";$("formTitle").textContent="Edytuj piosenkę";$("cancel").hidden=false;
+    $("fTitle").focus();$("fTitle").scrollIntoView({behavior:"smooth",block:"center"});
+  }
+  function clearForm(){
+    editing=null;["fTitle","fArtist","fUrl","fFile","fStart","fEnd","fLyrics"].forEach(function(i){$(i).value=""});
+    $("add").textContent="Dodaj";$("formTitle").textContent="Dodaj piosenkę";$("cancel").hidden=true;showErr("");
+  }
+  function upload(file,cb){
+    showErr("Przesyłanie pliku…");
+    var c=window.claude;
+    if(!c||!c.use){showErr("Przesyłanie plików jest tu niedostępne.");return}
+    c.use("assets").then(function(as){
+      if(!as){showErr("Przesyłanie plików jest dostępne tylko dla właściciela strony.");return}
+      return as.upload(file).then(function(r){showErr("");cb(r)});
+    }).catch(function(e){showErr("Nie udało się przesłać pliku"+(e&&e.message?": "+e.message:"")+".")});
+  }
+  $("cancel").onclick=clearForm;
+  $("add").onclick=function(){
+    var title=$("fTitle").value.trim(),url=$("fUrl").value.trim();
+    var file=$("fFile").files&&$("fFile").files[0];
+    var keep=editing&&getSong(editing)&&getSong(editing).assetId;
+    if(!title||(!url&&!file&&!keep)){showErr("Podaj tytuł oraz link lub plik audio.");return}
+    if(url&&!/^https?:\/\//i.test(url)){showErr("Link musi zaczynać się od http:// lub https://");return}
+    var st=parseT($("fStart").value),en=parseT($("fEnd").value);
+    if(isNaN(st)||isNaN(en)){showErr("Czas wpisz jako sekundy (90) lub min:sek (1:30).");return}
+    if(en!==null&&en<=(st||0)){showErr("Czas końca musi być późniejszy niż start.");return}
+    var data={title:title,artist:$("fArtist").value.trim(),url:url,lyrics:$("fLyrics").value.trim(),start:st>0?st:null,end:en>0?en:null};
+    var commit=function(){
+    if(editing){var s=getSong(editing);if(s){if(!data.url&&s.assetId){data.url=s.url;data.assetId=s.assetId}Object.assign(s,data)}}
+    else{data.id=uid();S.songs.unshift(data)}
+    persist();clearForm();renderAll();
+    };
+    if(file)upload(file,function(r){data.url=r.url;data.assetId=r.id;commit()});else commit();
+  };
+
+  /* ---------- listy, przerwa, szukanie ---------- */
+  $("renameList").onclick=function(){
+    var l=getList(view);if(!l)return;
+    askName("Nowa nazwa listy",l.name,function(n){l.name=n;persist();renderTabs()});
+  };
+  $("deleteList").onclick=function(){
+    var b=$("deleteList");
+    twoStep(b,function(){
+      S.lists=S.lists.filter(function(l){return l.id!==view});view="all";persist();renderAll();
+    });
+  };
+  $("gap").onchange=function(){
+    var g=parseInt(this.value,10);S.gap=isNaN(g)?3:Math.max(0,Math.min(120,g));this.value=S.gap;persist();
+  };
+  $("q").oninput=renderList;
+  $("playAll").onclick=function(){var ids=viewIds();if(ids.length)play(ids[0],ids)};
+  $("prev").onclick=function(){step(-1)};
+  $("next").onclick=function(){step(1)};
+  $("stop").onclick=stop;
+
+  /* ---------- eksport / import ---------- */
+  $("export").onclick=function(){
+    var blob=new Blob([JSON.stringify({songs:S.songs,lists:S.lists,gap:S.gap},null,2)],{type:"application/json"});
+    var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="piosenki.json";
+    document.body.appendChild(a);a.click();a.remove();
+  };
+  $("import").onclick=function(){$("file").click()};
+  $("file").onchange=function(){
+    var f=this.files[0];if(!f)return;
+    var r=new FileReader();
+    r.onload=function(){
+      try{
+        var inc=norm(JSON.parse(r.result)),map={},added=0;
+        inc.songs.forEach(function(s){
+          var ex=S.songs.find(function(x){return x.url===s.url&&x.start===s.start});
+          if(ex){map[s.id]=ex.id}else{
+            var nid=getSong(s.id)?uid():s.id;map[s.id]=nid;s.id=nid;S.songs.push(s);added++;
+          }
+        });
+        inc.lists.forEach(function(l){
+          var ex=S.lists.find(function(x){return x.name===l.name});
+          if(!ex){ex={id:uid(),name:l.name,songIds:[]};S.lists.push(ex)}
+          l.songIds.forEach(function(i){var m=map[i];if(m&&ex.songIds.indexOf(m)<0)ex.songIds.push(m)});
+        });
+        persist();renderAll();msg("Zaimportowano nowych piosenek: "+added+".");
+      }catch(e){msg("Nie udało się odczytać pliku.")}
+    };
+    r.readAsText(f);this.value="";
+  };
+
+  loadLocal();renderAll();initAccount();
+  if(window.claude&&window.claude.use)window.claude.use("assets").then(function(a){if(a)$("upBox").hidden=false}).catch(function(){});
+})();
+</script>
+</body>
+</html>
